@@ -1,0 +1,73 @@
+flowchart LR
+  subgraph CLIENT[Browser client]
+    REACT[React and TypeScript app]
+    CONSENT[Consent gate and chat UI]
+    UPLOAD[PDF and image upload]
+    REVIEW[OCR text review and edit]
+    SPEECH[Browser speech-to-text]
+    REACT --> CONSENT
+    CONSENT --> UPLOAD
+    CONSENT --> SPEECH
+    UPLOAD --> REVIEW
+  end
+
+  subgraph API[FastAPI backend]
+    AUTH[JWT authentication]
+    CONSENTCHECK[Current consent check]
+    CHAT[Conversation and chat routes]
+    SAFETY[Emergency phrase detector]
+    ROUTER[Health context router]
+    OCR[Transient document extraction]
+    LCEL[LangChain LCEL prompt chain]
+    SERP_ADAPTER[Optional privacy-filtered search adapter]
+    METRICS[Prometheus counters and histograms]
+  end
+
+  subgraph AI[AI and retrieval]
+    LLM[Configured Groq or Gemini model]
+    EMBED[Google Generative AI embeddings]
+    FAISS[(Persistent FAISS index)]
+    KNOWLEDGE[Curated PDF and JSON sources]
+    SERP[SerpAPI, disabled by default]
+  end
+
+  subgraph DATA[Persistence]
+    SQL[(SQLAlchemy database: accounts, consent, chats, health records)]
+  end
+
+  subgraph MONITORING[Internal monitoring]
+    PROM[Prometheus]
+    GRAFANA[Grafana dashboard and alerts]
+  end
+
+  REACT -->|HTTPS JSON or multipart| AUTH
+  AUTH --> CONSENTCHECK
+  CONSENTCHECK --> CHAT
+  CONSENTCHECK --> OCR
+  CHAT --> SAFETY
+  SAFETY -->|possible emergency: fixed guidance| CHAT
+  SAFETY -->|otherwise| ROUTER
+  ROUTER -->|selected personal context| SQL
+  ROUTER -->|medical query| EMBED
+  KNOWLEDGE --> EMBED
+  EMBED --> FAISS
+  FAISS -->|retrieved passages| LCEL
+  SQL -->|conversation history and selected health context| LCEL
+  REVIEW -->|user-reviewed attachment_text| CHAT
+  SPEECH -->|editable transcript, not auto-submitted| REACT
+  CHAT --> LCEL
+  LCEL --> LLM
+  LLM --> CHAT
+  ROUTER --> SERP_ADAPTER
+  SERP_ADAPTER -->|generic eligible query only| SERP
+  SERP -->|supplemental snippets| LCEL
+  CHAT --> SQL
+  OCR -->|text and warning; source file not saved| REVIEW
+  AUTH --> METRICS
+  CHAT --> METRICS
+  OCR --> METRICS
+  FAISS --> METRICS
+  LLM --> METRICS
+  SQL --> METRICS
+  METRICS -->|/metrics scrape| PROM
+  PROM --> GRAFANA

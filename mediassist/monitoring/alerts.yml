@@ -1,0 +1,44 @@
+groups:
+  - name: mediassist-operations
+    rules:
+      - alert: MediAssistHighServerErrorRate
+        expr: |
+          sum(rate(mediassist_http_requests_total{status_code=~"5.."}[5m]))
+          / clamp_min(sum(rate(mediassist_http_requests_total[5m])), 1e-9) > 0.05
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: MediAssist server error rate is above 5%
+          description: Check API logs and upstream/database availability. Do not include patient data in alert details.
+
+      - alert: MediAssistHighApiP95Latency
+        expr: |
+          histogram_quantile(0.95, sum by (le) (rate(mediassist_http_request_duration_seconds_bucket[5m]))) > 2
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: MediAssist API p95 latency is above 2 seconds
+          description: Inspect route latency, upstream LLM timing, and database metrics.
+
+      - alert: MediAssistHighLlmFailureRate
+        expr: |
+          sum(rate(mediassist_llm_requests_total{outcome="error"}[5m]))
+          / clamp_min(sum(rate(mediassist_llm_requests_total[5m])), 1e-9) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: MediAssist upstream model failure rate is above 10%
+          description: Check provider health, quotas, credentials, and network status.
+
+      - alert: MediAssistDatabaseStatementErrors
+        expr: |
+          sum(rate(mediassist_database_statements_total{outcome="error"}[5m])) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: MediAssist database statement errors detected
+          description: Inspect database health and connection configuration without logging query contents.

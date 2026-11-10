@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: MediAssist
+    orgId: 1
+    folder: MediAssist
+    type: file
+    disableDeletion: true
+    editable: true
+    options:
+      path: /var/lib/grafana/dashboards
